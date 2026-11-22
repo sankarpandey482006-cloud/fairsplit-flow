@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FairSplit Flow — Shared Expenses Made Simple</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: { teal: { 50:'#f0fdfa',100:'#ccfbf1',200:'#99f6e4',400:'#2dd4bf',500:'#14b8a6',600:'#0d9488',700:'#0f766e' } },
+        fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
+      }}
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     LANDING PAGE
+══════════════════════════════════════════════ -->
+<div id="landing-page">
+  <div class="landing-hero">
+    <div class="landing-logo">⚖️</div>
+    <h1>Split Bills,<br><span style="color:#0d9488;">Not Friendships.</span></h1>
+    <p>FairSplit Flow calculates who owes whom using graph theory — minimising the number of transfers to at most <strong style="color:#0d9488;">n − 1</strong> payments.</p>
+    <div class="landing-actions">
+      <button class="landing-btn-primary" onclick="showApp()">🚀 Open My Groups</button>
+      <button class="landing-btn-secondary" onclick="openModal('modal-create-group')">+ Create New Group</button>
+    </div>
+  </div>
+
+  <div class="landing-features">
+    <div class="feature-card">
+      <div class="icon">🧮</div>
+      <h3>Mathematically Optimal</h3>
+      <p>Greedy heap algorithm finds the minimum possible number of transfers</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🔗</div>
+      <h3>Trust-Preserving Mode</h3>
+      <p>Ford-Fulkerson flow keeps payments along existing IOU relationships</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📐</div>
+      <h3>"Show the Math"</h3>
+      <p>Full educational walkthrough with net-balance table and algorithm steps</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🏠</div>
+      <h3>Flatmate Tools</h3>
+      <p>Days-stayed splits, move-out calculators, monthly bill templates</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📊</div>
+      <h3>Club Budgets</h3>
+      <p>Budget vs actual tracker, expense approval workflows, sponsor funds</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">💼</div>
+      <h3>Office Reimbursements</h3>
+      <p>Audit-ready PDF ledger with project tagging and cost centre tracking</p>
+    </div>
+  </div>
+
+  <p style="font-size:13px;color:#94a3b8;text-align:center;">No sign-up required · Works offline · Zero-sum verified</p>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════ -->
+<div id="main-app">
+
+<!-- ═══ TOP NAVIGATION BAR ═══ -->
+<header style="background:#fff; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:200;">
+  <div style="max-width:1100px; margin:0 auto; padding:0 20px; height:62px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+
+    <!-- Brand -->
+    <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="showLanding()">
+      <div style="width:38px;height:38px;background:linear-gradient(135deg,#0d9488,#059669);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⚖️</div>
+      <div class="hidden sm:block">
+        <div style="font-weight:800;font-size:16px;color:#0f172a;line-height:1;">FairSplit <span style="color:#0d9488;">Flow</span></div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:1px;">Minimum transfers guaranteed</div>
+      </div>
+    </div>
+
+    <!-- Group Switcher -->
+    <div style="flex:1; max-width:280px;">
+      <select id="group-selector-select" style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:500;color:#1e293b;background:#f8fafc;cursor:pointer;">
+        <!-- filled by JS -->
+      </select>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="btn-new-group" onclick="openModal('modal-create-group')" style="padding:8px 14px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;font-size:13px;font-weight:500;color:#475569;cursor:pointer;white-space:nowrap;">
+        + New Group
+      </button>
+      <button id="btn-add-expense-nav" onclick="openAddExpenseModal()" style="padding:8px 18px;border-radius:9px;background:#0d9488;color:#fff;font-size:13px;font-weight:600;border:none;cursor:pointer;white-space:nowrap;">
+        + Add Expense
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div style="border-top:1px solid #f1f5f9; background:#fafafa;">
+    <div style="max-width:1100px;margin:0 auto;padding:0 20px; display:flex; gap:4px; overflow-x:auto; padding-top:6px; padding-bottom:6px;" class="no-scroll-bar">
+      <button data-tab="dashboard" class="nav-tab active">📊 Dashboard</button>
+      <button data-tab="settlements" class="nav-tab">🔄 Settle Up</button>
+      <button data-tab="members" class="nav-tab">👥 Members</button>
+      <button data-tab="special" class="nav-tab">✨ Special</button>
+      <button data-tab="report" class="nav-tab">🌐 Public Report</button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<main style="max-width:1100px; margin:0 auto; padding:24px 20px 100px;">
+
+  <!-- ══ TAB: DASHBOARD ══ -->
+  <div id="tab-dashboard" class="tab-panel">
+
+    <!-- Top Row: Balance Hero + Group Stats -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;" class="responsive-grid-2">
+
+      <!-- Personal Balance Hero -->
+      <div id="balance-hero" class="balance-hero-owed">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:0.85;margin-bottom:6px;" id="balance-label">YOU ARE OWED</div>
+        <div style="font-size:36px;font-weight:800;line-height:1;margin-bottom:8px;" id="balance-amount">₹0.00</div>
+        <div style="font-size:13px;opacity:0.85;" id="balance-subtitle">Your net balance in this group.</div>
+        <div style="position:absolute;right:-10px;top:-10px;width:80px;height:80px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
+      </div>
+
+      <!-- Group Stats -->
+      <div class="card" style="padding:20px; display:flex; flex-direction:column; justify-content:space-between; gap:12px;">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Current Group</div>
+          <div id="group-name-display" style="font-size:19px;font-weight:800;color:#0f172a;margin-top:4px;line-height:1.2;">Loading...</div>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div>
+            <div style="font-size:11px;color:#94a3b8;font-weight:500;">Total spent</div>
+            <div id="dash-total-spent" style="font-size:17px;font-weight:700;color:#0f172a;">₹0</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#94a3b8;font-weight:500;">Members</div>
+            <div id="dash-member-count" style="font-size:17px;font-weight:700;color:#0f172a;">0</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#94a3b8;font-weight:500;">Invite code</div>
+            <div id="dash-invite-code" style="font-size:14px;font-weight:700;color:#0d9488;cursor:pointer;" onclick="openModal('modal-invite')">— copy →</div>
+          </div>
+        </div>
+        <!-- Action Buttons Row -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;border-top:1px solid #f1f5f9;">
+          <button onclick="openAddExpenseModal()" style="flex:1;min-width:120px;padding:8px 12px;background:#0d9488;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">+ Add Expense</button>
+          <button onclick="openModal('modal-add-member')" style="flex:1;min-width:110px;padding:8px 12px;background:#f0fdfa;color:#0d9488;border:1.5px solid #99f6e4;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">+ Add Member</button>
+          <button onclick="openModal('modal-invite')" style="padding:8px 12px;background:#f8fafc;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;" title="Invite people">🔗 Invite</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content: Expenses + Sidebar -->
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;" class="responsive-grid-sidebar">
+
+      <!-- Left: Expenses List -->
+      <div>
+        <!-- Filter Bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <h3 style="font-size:16px;font-weight:700;color:#0f172a;">Expenses</h3>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:3px;display:flex;gap:2px;">
+              <button data-filter="all" class="filter-btn active-filter" onclick="setExpenseFilter('all')">All</button>
+              <button data-filter="mine" class="filter-btn" onclick="setExpenseFilter('mine')">Mine</button>
+            </div>
+            <button onclick="openAddExpenseModal()" style="padding:7px 14px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">+ Add</button>
+          </div>
+        </div>
+
+        <div id="expense-list-container">
+          <div class="empty-state">
+            <div class="icon">💸</div>
+            <h4>No expenses yet</h4>
+            <p>Add your first expense to get started.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar: Members + Activity -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <!-- Members balance summary -->
+        <div class="card" style="padding:18px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <h4 style="font-size:14px;font-weight:700;color:#0f172a;">Balances</h4>
+            <button onclick="switchTab('settlements')" style="font-size:12px;color:#0d9488;font-weight:600;background:none;border:none;cursor:pointer;">Settle Up →</button>
+          </div>
+          <div id="member-balances-list" style="display:flex;flex-direction:column;gap:8px;">
+            <!-- filled by JS -->
+          </div>
+          <button onclick="openModal('modal-add-member')" style="margin-top:12px;width:100%;padding:8px;border:1.5px dashed #cbd5e1;border-radius:9px;background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-weight:500;">
+            + Add Member
+          </button>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card" style="padding:18px;">
+          <h4 style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:12px;">Recent Activity</h4>
+          <div id="activity-list" style="display:flex;flex-direction:column;gap:10px;max-height:220px;overflow-y:auto;">
+            <p style="font-size:13px;color:#94a3b8;">No recent activity.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: SETTLE UP ══ -->
+  <div id="tab-settlements" class="tab-panel" style="display:none;">
+    <div style="margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:800;color:#0f172a;">Settle Up</h2>
+      <p style="font-size:14px;color:#64748b;margin-top:4px;">Minimum transfers calculated using graph theory — at most n–1 for n members.</p>
+    </div>
+
+    <!-- Mode Switcher -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+      <button data-mode="greedy" class="settle-mode-btn" onclick="setSettleMode('greedy')" style="padding:9px 18px;border-radius:10px;border:1.5px solid #0d9488;background:#0d9488;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+        ⚡ Minimum Transfers
+      </button>
+      <button data-mode="trust_preserving" class="settle-mode-btn" onclick="setSettleMode('trust_preserving')" style="padding:9px 18px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px;font-weight:500;cursor:pointer;">
+        🤝 Trust-Preserving
+      </button>
+      <button onclick="openMathDrawer()" style="margin-left:auto;padding:9px 18px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;font-size:13px;font-weight:500;cursor:pointer;">
+        📐 Show the Math
+      </button>
+    </div>
+
+    <!-- Stats Row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;" class="responsive-grid-3">
+      <div class="card" style="padding:16px;text-align:center;">
+        <div style="font-size:11px;color:#94a3b8;font-weight:500;text-transform:uppercase;letter-spacing:1px;">Transfers Needed</div>
+        <div id="stat-transfers" style="font-size:28px;font-weight:800;color:#0d9488;">—</div>
+        <div style="font-size:11px;color:#94a3b8;">vs n–1 bound</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center;">
+        <div style="font-size:11px;color:#94a3b8;font-weight:500;text-transform:uppercase;letter-spacing:1px;">IOUs Eliminated</div>
+        <div id="stat-saved" style="font-size:28px;font-weight:800;color:#059669;">—</div>
+        <div style="font-size:11px;color:#94a3b8;">redundant payments</div>
+      </div>
+      <div class="card" style="padding:16px;text-align:center;">
+        <div style="font-size:11px;color:#94a3b8;font-weight:500;text-transform:uppercase;letter-spacing:1px;">Zero-Sum</div>
+        <div id="stat-zerosum" style="font-size:28px;font-weight:800;color:#0d9488;">✓</div>
+        <div style="font-size:11px;color:#94a3b8;">invariant verified</div>
+      </div>
+    </div>
+
+    <!-- Debt Graph (Before / After) -->
+    <div class="debt-graph-container card" style="margin-bottom:20px;">
+      <div class="debt-graph-tabs">
+        <button class="debt-graph-tab active" data-graph="after" onclick="switchGraphView('after')">After Simplification ✓</button>
+        <button class="debt-graph-tab" data-graph="before" onclick="switchGraphView('before')">Before (Raw IOUs)</button>
+      </div>
+      <div class="graph-svg-container" id="graph-svg-mount">
+        <div style="text-align:center;color:#94a3b8;font-size:13px;">
+          <div style="font-size:28px;margin-bottom:8px;">📊</div>
+          <div>Load settlements to see debt graph</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settlement Cards -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 style="font-size:16px;font-weight:700;color:#0f172a;">Payment Plan</h3>
+      <div id="settle-algo-badge"></div>
+    </div>
+    <div id="settlement-cards" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+      <!-- filled by JS -->
+    </div>
+
+    <!-- Export Row -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button onclick="copyWhatsApp()" style="padding:10px 20px;background:#25D366;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
+        📲 Copy WhatsApp Summary
+      </button>
+      <button onclick="window.open('/api/groups/'+App.currentGroupId+'/export/csv','_blank')" style="padding:10px 18px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:500;color:#475569;cursor:pointer;">
+        📊 Export CSV
+      </button>
+      <button onclick="window.print()" style="padding:10px 18px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:500;color:#475569;cursor:pointer;">
+        🖨️ PDF / Print
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ TAB: MEMBERS ══ -->
+  <div id="tab-members" class="tab-panel" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="font-size:20px;font-weight:800;color:#0f172a;">Members</h2>
+        <p style="font-size:14px;color:#64748b;margin-top:4px;">Manage who's in this group.</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="openModal('modal-add-member')" style="padding:9px 18px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">+ Add Member</button>
+        <button onclick="openModal('modal-invite')" style="padding:9px 18px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:500;color:#475569;cursor:pointer;">🔗 Share Invite</button>
+      </div>
+    </div>
+    <div id="members-full-list" style="display:flex;flex-direction:column;gap:10px;">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- ══ TAB: SPECIAL ══ -->
+  <div id="tab-special" class="tab-panel" style="display:none;">
+    <div style="margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:800;color:#0f172a;" id="special-tab-title">Special Module</h2>
+      <p style="font-size:14px;color:#64748b;margin-top:4px;" id="special-tab-desc">Advanced tools for your group type.</p>
+    </div>
+    <div id="special-module-mount"></div>
+  </div>
+
+  <!-- ══ TAB: PUBLIC REPORT ══ -->
+  <div id="tab-report" class="tab-panel" style="display:none;">
+    <div id="public-report-mount">
+      <div class="empty-state"><div class="icon">🌐</div><h4>Public Report</h4><p>Share this group's expenses transparently.</p></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Mobile FAB -->
+<button class="fab" id="fab-add" onclick="openAddExpenseModal()" title="Add Expense">+</button>
+
+</div><!-- /main-app -->
+
+<!-- ══════════════════════════════════════════
+     TOAST
+══════════════════════════════════════════ -->
+<div id="app-toast" class="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     MODAL: ADD EXPENSE
+══════════════════════════════════════════ -->
+<div id="modal-add-expense" class="modal-overlay">
+  <div class="modal-box" style="max-width:520px;">
+    <!-- Header -->
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <!-- Icon-based Mode Toggle -->
+        <div class="mode-toggle-wrap">
+          <button id="toggle-shared" class="mode-toggle-btn active" onclick="setExpenseMode('shared')" title="Shared Expense">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>Shared</span>
+          </button>
+          <button id="toggle-individual" class="mode-toggle-btn" onclick="setExpenseMode('individual')" title="Individual Expense">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Individual</span>
+          </button>
+        </div>
+      </div>
+      <button onclick="closeModal('modal-add-expense')" style="width:30px;height:30px;border-radius:50%;border:none;background:#f1f5f9;color:#64748b;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+
+    <!-- Form Body -->
+    <div style="padding:20px 24px;overflow-y:auto;flex:1;">
+      <form id="expense-form" onsubmit="return false;" style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Description -->
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">What was it for? *</label>
+          <input id="exp-title" type="text" class="form-input" placeholder="e.g. Dinner, Villa booking, Groceries…" autocomplete="off" />
+          <div id="err-title" class="field-error" style="display:none;">⚠ Please enter a description.</div>
+        </div>
+
+        <!-- Amount -->
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Amount *</label>
+          <div style="position:relative;">
+            <span id="exp-currency-symbol" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:700;color:#94a3b8;font-size:15px;">₹</span>
+            <input id="exp-amount" type="number" min="0.01" step="any" class="form-input" placeholder="0.00" style="padding-left:32px;font-size:17px;font-weight:700;" />
+          </div>
+          <div id="err-amount" class="field-error" style="display:none;">⚠ Enter a valid amount greater than 0.</div>
+        </div>
+
+        <!-- Paid By -->
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Paid by</label>
+          <select id="exp-paid-by" class="form-input"><!-- filled by JS --></select>
+        </div>
+
+        <!-- Split Between (Shared mode) -->
+        <div id="split-between-section">
+          <!-- Split Method Pills -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+            <label style="font-size:13px;font-weight:600;color:#374151;">Split between</label>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;" id="split-pill-row">
+              <button type="button" data-method="equal" class="split-pill active" onclick="setSplitMethod('equal')">Equal</button>
+              <button type="button" data-method="exact" class="split-pill" onclick="setSplitMethod('exact')">Exact ₹</button>
+              <button type="button" data-method="percent" class="split-pill" onclick="setSplitMethod('percent')">%</button>
+              <button type="button" data-method="shares" class="split-pill" onclick="setSplitMethod('shares')">Shares</button>
+              <button type="button" data-method="days" class="split-pill" id="split-pill-days" style="display:none;" onclick="setSplitMethod('days')">📅 Days</button>
+            </div>
+          </div>
+
+          <!-- Select All / Deselect All -->
+          <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:8px;">
+            <button type="button" onclick="selectAllMembers()" style="font-size:12px;color:#0d9488;font-weight:600;background:none;border:none;cursor:pointer;">Select All</button>
+            <span style="color:#e2e8f0;">|</span>
+            <button type="button" onclick="deselectAllMembers()" style="font-size:12px;color:#94a3b8;font-weight:500;background:none;border:none;cursor:pointer;">None</button>
+          </div>
+
+          <div id="members-checklist" style="display:flex;flex-direction:column;gap:7px;max-height:230px;overflow-y:auto;padding-right:4px;">
+            <!-- filled by JS -->
+          </div>
+          <div id="err-members" class="field-error" style="display:none;">⚠ Select at least one person.</div>
+        </div>
+
+        <!-- Individual Target (Individual mode) -->
+        <div id="individual-target-section" style="display:none;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Who does this expense affect?</label>
+          <select id="exp-individual-target" class="form-input"><!-- filled by JS --></select>
+        </div>
+
+        <!-- Live Share Preview Banner -->
+        <div id="live-preview-bar" style="background:#f0fdfa;border:1.5px solid #99f6e4;border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:13px;color:#0f766e;font-weight:500;">
+            <span id="live-per-person">₹0.00 each</span>
+            <span style="color:#94a3b8;font-weight:400;"> among </span>
+            <span id="live-member-count" style="font-weight:600;">0</span>
+            <span style="color:#94a3b8;font-weight:400;"> people</span>
+          </div>
+          <span id="live-sum-check" style="font-size:12px;font-weight:600;color:#0d9488;">✓ Exact</span>
+        </div>
+
+        <!-- Advanced Options (collapsed) -->
+        <details id="advanced-options-details">
+          <summary style="font-size:13px;font-weight:600;color:#64748b;padding:8px 0;cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;">
+            <span>⚙️ Advanced Options</span>
+            <span style="font-size:11px;color:#94a3b8;">▼</span>
+          </summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:12px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:5px;">Category</label>
+              <select id="exp-category" class="form-input" style="font-size:13px;padding:8px 12px;">
+                <option>General</option>
+                <option>Food &amp; Drink</option>
+                <option>Stay &amp; Hotel</option>
+                <option>Transport &amp; Fuel</option>
+                <option>Activities</option>
+                <option>Groceries</option>
+                <option>Utilities</option>
+                <option>Rent</option>
+                <option>Software &amp; Cloud</option>
+                <option>Entertainment</option>
+                <option>Medical</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:5px;">Date</label>
+              <input id="exp-date" type="date" class="form-input" style="font-size:13px;padding:8px 12px;" />
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:5px;">Recurring</label>
+              <select id="exp-recurring" class="form-input" style="font-size:13px;padding:8px 12px;">
+                <option value="none">One-time</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#64748b;display:block;margin-bottom:5px;">Project / Tag</label>
+              <input id="exp-project-tag" type="text" class="form-input" placeholder="e.g. Q4 Offsite" style="font-size:13px;padding:8px 12px;" />
+            </div>
+          </div>
+        </details>
+
+      </form>
+    </div>
+
+    <!-- Footer Buttons -->
+    <div style="padding:16px 24px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fafafa;border-radius:0 0 20px 20px;flex-shrink:0;">
+      <button type="button" onclick="closeModal('modal-add-expense')" class="btn-ghost" style="padding:9px 16px;font-size:13px;">Cancel</button>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="btn-save-another" onclick="submitExpense(true)" style="padding:9px 16px;background:#f0fdfa;color:#0d9488;border:1.5px solid #99f6e4;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Save &amp; Add Another</button>
+        <button type="button" id="btn-save-expense" onclick="submitExpense(false)" style="padding:9px 20px;background:#0d9488;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(13,148,136,0.3);">Save Expense</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL: ADD MEMBER
+══════════════════════════════════════════ -->
+<div id="modal-add-member" class="modal-overlay">
+  <div class="modal-box" style="max-width:420px;">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:17px;font-weight:700;color:#0f172a;">Add Member</h3>
+      <button onclick="closeModal('modal-add-member')" style="width:30px;height:30px;border-radius:50%;border:none;background:#f1f5f9;color:#64748b;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Name *</label>
+        <input id="add-member-name" type="text" class="form-input" placeholder="e.g. Priya Nair" />
+        <div id="err-member-name" class="field-error" style="display:none;">⚠ Name is required.</div>
+      </div>
+      <div>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Email (optional)</label>
+        <input id="add-member-email" type="email" class="form-input" placeholder="priya@example.com" />
+      </div>
+      <div>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Role</label>
+        <select id="add-member-role" class="form-input">
+          <option value="member">Member</option>
+          <option value="admin">Admin</option>
+          <option value="treasurer">Treasurer</option>
+          <option value="viewer">Viewer (read-only)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;padding-top:4px;">
+        <button onclick="closeModal('modal-add-member')" class="btn-ghost" style="flex:1;padding:10px;">Cancel</button>
+        <button onclick="submitAddMember()" style="flex:2;padding:10px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Add Member</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL: INVITE / SHARE GROUP
+══════════════════════════════════════════ -->
+<div id="modal-invite" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px;">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:17px;font-weight:700;color:#0f172a;">Invite to Group</h3>
+      <button onclick="closeModal('modal-invite')" style="width:30px;height:30px;border-radius:50%;border:none;background:#f1f5f9;color:#64748b;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:16px;text-align:center;">
+      <p style="font-size:14px;color:#64748b;">Share this invite code with your group:</p>
+      <div class="invite-code-box" id="invite-code-display">———</div>
+      <button onclick="copyInviteCode()" style="width:100%;padding:12px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">📋 Copy Invite Code</button>
+      <button onclick="copyInviteLink()" style="width:100%;padding:10px;background:#f8fafc;color:#475569;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;">🔗 Copy Invite Link</button>
+
+      <div style="border-top:1px solid #f1f5f9;padding-top:16px;">
+        <p style="font-size:13px;color:#64748b;margin-bottom:10px;">Or join using a code:</p>
+        <div style="display:flex;gap:8px;">
+          <input id="join-code-input" type="text" class="form-input" placeholder="Enter code e.g. GOA2026" style="text-transform:uppercase;font-weight:700;letter-spacing:3px;text-align:center;" />
+          <button onclick="joinViaCode()" style="padding:10px 16px;background:#0f172a;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Join</button>
+        </div>
+        <div id="err-join-code" class="field-error" style="display:none;justify-content:center;">⚠ Invalid invite code.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL: CREATE GROUP
+══════════════════════════════════════════ -->
+<div id="modal-create-group" class="modal-overlay">
+  <div class="modal-box" style="max-width:460px;">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:17px;font-weight:700;color:#0f172a;">Create New Group</h3>
+      <button onclick="closeModal('modal-create-group')" style="width:30px;height:30px;border-radius:50%;border:none;background:#f1f5f9;color:#64748b;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;">
+      <div>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Group Name *</label>
+        <input id="new-grp-name" type="text" class="form-input" placeholder="e.g. Goa Trip, Flat 402, Marketing Team" />
+        <div id="err-grp-name" class="field-error" style="display:none;">⚠ Group name is required.</div>
+      </div>
+
+      <!-- Group Type Icons -->
+      <div>
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:8px;">Group Type</label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;" id="group-type-grid">
+          <button type="button" class="group-type-btn" data-type="travel" onclick="setGroupType('travel')" style="padding:12px 8px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;text-align:center;cursor:pointer;">
+            <div style="font-size:22px;">✈️</div><div style="font-size:11px;font-weight:500;color:#64748b;margin-top:4px;">Travel</div>
+          </button>
+          <button type="button" class="group-type-btn" data-type="hostel" onclick="setGroupType('hostel')" style="padding:12px 8px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;text-align:center;cursor:pointer;">
+            <div style="font-size:22px;">🏠</div><div style="font-size:11px;font-weight:500;color:#64748b;margin-top:4px;">Flatmates</div>
+          </button>
+          <button type="button" class="group-type-btn" data-type="club" onclick="setGroupType('club')" style="padding:12px 8px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;text-align:center;cursor:pointer;">
+            <div style="font-size:22px;">🎓</div><div style="font-size:11px;font-weight:500;color:#64748b;margin-top:4px;">Club</div>
+          </button>
+          <button type="button" class="group-type-btn" data-type="office" onclick="setGroupType('office')" style="padding:12px 8px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;text-align:center;cursor:pointer;">
+            <div style="font-size:22px;">💼</div><div style="font-size:11px;font-weight:500;color:#64748b;margin-top:4px;">Office</div>
+          </button>
+          <button type="button" class="group-type-btn" data-type="family" onclick="setGroupType('family')" style="padding:12px 8px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;text-align:center;cursor:pointer;">
+            <div style="font-size:22px;">👨‍👩‍👧‍👦</div><div style="font-size:11px;font-weight:500;color:#64748b;margin-top:4px;">Family</div>
+          </button>
+          <button type="button" class="group-type-btn" data-type="sports" onclick="setGroupType('sports')" style="padding:12px 8px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;text-align:center;cursor:pointer;">
+            <div style="font-size:22px;">⚽</div><div style="font-size:11px;font-weight:500;color:#64748b;margin-top:4px;">Sports</div>
+          </button>
+          <button type="button" class="group-type-btn" data-type="business" onclick="setGroupType('business')" style="padding:12px 8px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;text-align:center;cursor:pointer;">
+            <div style="font-size:22px;">📈</div><div style="font-size:11px;font-weight:500;color:#64748b;margin-top:4px;">Business</div>
+          </button>
+          <button type="button" class="group-type-btn" data-type="other" onclick="setGroupType('other')" style="padding:12px 8px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;text-align:center;cursor:pointer;">
+            <div style="font-size:22px;">🌐</div><div style="font-size:11px;font-weight:500;color:#64748b;margin-top:4px;">Other</div>
+          </button>
+        </div>
+        <input type="hidden" id="new-grp-type" value="travel" />
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Currency</label>
+          <select id="new-grp-currency" class="form-input" style="font-size:13px;padding:8px 12px;">
+            <option value="INR">₹ INR</option>
+            <option value="USD">$ USD</option>
+            <option value="EUR">€ EUR</option>
+            <option value="GBP">£ GBP</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Your Name</label>
+          <input id="new-grp-creator" type="text" class="form-input" placeholder="Your name" value="Sankalp Sharma" style="font-size:13px;padding:8px 12px;" />
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;padding-top:4px;">
+        <button onclick="closeModal('modal-create-group')" class="btn-ghost" style="flex:1;padding:10px;font-size:13px;">Cancel</button>
+        <button onclick="submitCreateGroup()" style="flex:2;padding:10px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Create Group</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     DRAWER: SHOW THE MATH
+══════════════════════════════════════════ -->
+<div id="math-drawer-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.3);z-index:500;opacity:0;pointer-events:none;transition:opacity 0.2s;">
+  <div id="math-drawer-panel" style="position:absolute;right:0;top:0;bottom:0;width:100%;max-width:580px;background:#fff;box-shadow:-8px 0 40px rgba(0,0,0,0.12);transform:translateX(100%);transition:transform 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:10;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;background:#ede9fe;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">📐</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#0f172a;">The Math Behind It</div>
+          <div style="font-size:12px;color:#94a3b8;">Graph theory &amp; exact integer proofs</div>
+        </div>
+      </div>
+      <button onclick="closeMathDrawer()" style="width:30px;height:30px;border-radius:50%;border:none;background:#f1f5f9;color:#64748b;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="math-drawer-body" style="padding:24px;flex:1;"></div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="js/engine/client_engine.js"></script>
+<script src="js/app2.js"></script>
+</body>
+</html>

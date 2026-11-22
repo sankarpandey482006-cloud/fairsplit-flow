@@ -1,0 +1,8 @@
+# FairSplit Flow - Dependencies
+# ===============================
+
+# Core Web Framework
+Flask>=3.0.0
+
+# Production WSGI HTTP Server (Render, Railway, Linux cloud hosting)
+gunicorn>=21.2.0
